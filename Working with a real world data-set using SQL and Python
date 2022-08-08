@@ -1,0 +1,651 @@
+Working with a real world data-set using SQL and Python
+Estaimted time needed: 30 minutes
+
+Objectives
+After complting this lab you will be able to:
+
+Understand the dataset for Chicago Public School level performance
+Store the dataset in an Db2 database on IBM Cloud instance
+Retrieve metadata about tables and columns and query data from mixed case columns
+Solve example problems to practice your SQL skills including using built-in database functions
+Chicago Public Schools - Progress Report Cards (2011-2012)
+The city of Chicago released a dataset showing all school level performance data used to create School Report Cards for the 2011-2012 school year. The dataset is available from the Chicago Data Portal: https://data.cityofchicago.org/Education/Chicago-Public-Schools-Progress-Report-Cards-2011-/9xs2-f89t
+
+This dataset includes a large number of metrics. Start by familiarizing yourself with the types of metrics in the database: https://data.cityofchicago.org/api/assets/AAD41A13-BE8A-4E67-B1F5-86E711E09D5F?download=true
+
+NOTE:
+
+Do not download the dataset directly from City of Chicago portal. Instead download a static copy which is a more database friendly version from this link.
+
+Now review some of its contents.
+
+Store the dataset in a Table
+In many cases the dataset to be analyzed is available as a .CSV (comma separated values) file, perhaps on the internet. To analyze the data using SQL, it first needs to be stored in the database.
+
+While it is easier to read the dataset into a Pandas dataframe and then PERSIST it into the database as we saw in the previous lab, it results in mapping to default datatypes which may not be optimal for SQL querying. For example a long textual field may map to a CLOB instead of a VARCHAR.
+
+Therefore, it is highly recommended to manually load the table using the database console LOAD tool, as indicated in Week 2 Lab 1 Part II. The only difference with that lab is that in Step 5 of the instructions you will need to click on create "(+) New Table" and specify the name of the table you want to create and then click "Next".
+
+Now open the Db2 console, open the LOAD tool, Select / Drag the .CSV file for the CHICAGO PUBLIC SCHOOLS dataset and load the dataset into a new table called SCHOOLS.
+Image
+
+Connect to the database
+Let us now load the ipython-sql extension and establish a connection with the database
+
+The following modules are pre-installed in the Skills Network Labs environment. However if you run this notebook commands in a different Jupyter environment (e.g. Watson Studio or Ananconda) you may need to install these libraries by removing the # sign before !pip in the code cell below.
+
+# These libraries are pre-installed in SN Labs. If running in another environment please uncomment lines below to install them:
+# !pip install --force-reinstall ibm_db==3.1.0 ibm_db_sa==0.3.3
+# Ensure we don't load_ext with sqlalchemy>=1.4 (incompadible)
+# !pip uninstall sqlalchemy==1.4 -y && pip install sqlalchemy==1.3.24
+# !pip install ipython-sql
+%load_ext sql
+# Enter the connection string for your Db2 on Cloud database instance below
+# %sql ibm_db_sa://my-username:my-password@my-hostname:my-port/my-db-name?security=SSL
+%sql ibm_db_sa://vwv79926:vvdsmcd07kU2B01v@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb?security=SSL
+'Connected: vwv79926@bludb'
+Query the database system catalog to retrieve table metadata
+You can verify that the table creation was successful by retrieving the list of all tables in your schema and checking whether the SCHOOLS table was created
+# type in your query to retrieve list of all tables in the database for your db2 schema (username)
+​
+%sql select * from SYSCAT.TABLES where TABNAME = 'SCHOOLS'
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+tabschema	tabname	owner	ownertype	TYPE	status	base_tabschema	base_tabname	rowtypeschema	rowtypename	create_time	alter_time	invalidate_time	stats_time	colcount	tableid	tbspaceid	card	npages	mpages	fpages	npartitions	nfiles	tablesize	overflow	tbspace	index_tbspace	long_tbspace	parents	children	selfrefs	keycolumns	keyindexid	keyunique	checkcount	datacapture	const_checked	pmap_id	partition_mode	log_attribute	pctfree	append_mode	REFRESH	refresh_time	LOCKSIZE	VOLATILE	row_format	property	statistics_profile	compression	rowcompmode	access_mode	clustered	active_blocks	droprule	maxfreespacesearch	avgcompressedrowsize	avgrowcompressionratio	avgrowsize	pctrowscompressed	logindexbuild	codepage	collationschema	collationname	collationschema_orderby	collationname_orderby	encoding_scheme	pctpagessaved	last_regen_time	secpolicyid	protectiongranularity	auditpolicyid	auditpolicyname	auditexceptionenabled	definer	oncommit	logged	onrollback	lastused	control	temporaltype	tableorg	extended_row_size	pctextendedrows	remarks
+VWV79926	SCHOOLS	VWV79926	U	T	N	None	None	None	None	2022-08-08 19:49:53.407400	2022-08-08 19:49:53.407400	2022-08-08 19:49:53.407400	None	78	13	2624	-1	-1	-1	-1	-1	-1	-1	-1	VWV79926SPACE1	None	None	0	0	0	0	0	0	0	N	YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY	1		0	-1	N		None	R		N	                                	None	N		F	None	-1	N	999	-1	-1.0	-1	-1.0	None	1208	SYSIBM	IDENTITY	SYSIBM	IDENTITY		-1	2022-08-08 19:49:53.407400	0		None	None	N	VWV79926				2022-08-08		N	R	N	-1.0	None
+Double-click **here** for a hint
+​
+<!--
+In Db2 the system catalog table called SYSCAT.TABLES contains the table metadata
+-->
+​
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select TABSCHEMA, TABNAME, CREATE_TIME from SYSCAT.TABLES where TABSCHEMA='YOUR-DB2-USERNAME'
+​
+or, you can retrieve list of all tables where the schema name is not one of the system created ones:
+​
+%sql select TABSCHEMA, TABNAME, CREATE_TIME from SYSCAT.TABLES \
+      where TABSCHEMA not in ('SYSIBM', 'SYSCAT', 'SYSSTAT', 'SYSIBMADM', 'SYSTOOLS', 'SYSPUBLIC')
+      
+or, just query for a specifc table that you want to verify exists in the database
+%sql select * from SYSCAT.TABLES where TABNAME = 'SCHOOLS'
+​
+-->
+​
+Query the database system catalog to retrieve column metadata
+The SCHOOLS table contains a large number of columns. How many columns does this table have?
+# type in your query to retrieve the number of columns in the SCHOOLS table
+%sql select count(*) from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+1
+78
+Double-click **here** for a hint
+​
+<!--
+In Db2 the system catalog table called SYSCAT.COLUMNS contains the column metadata
+-->
+​
+%sql select count(*) from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select count(*) from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+​
+-->
+​
+Now retrieve the the list of columns in SCHOOLS table and their column type (datatype) and length.
+
+# type in your query to retrieve all column names in the SCHOOLS table along with their datatypes and length
+%sql select COLNAME, TYPENAME, LENGTH from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+colname	typename	length
+SCHOOL_ID	INTEGER	4
+NAME_OF_SCHOOL	VARCHAR	64
+Elementary, Middle, or High School	VARCHAR	2
+STREET_ADDRESS	VARCHAR	29
+CITY	VARCHAR	7
+STATE	VARCHAR	2
+ZIP_CODE	INTEGER	4
+PHONE_NUMBER	VARCHAR	14
+LINK	VARCHAR	78
+NETWORK_MANAGER	VARCHAR	40
+COLLABORATIVE_NAME	VARCHAR	34
+ADEQUATE_YEARLY_PROGRESS_MADE_	VARCHAR	3
+TRACK_SCHEDULE	VARCHAR	12
+CPS_PERFORMANCE_POLICY_STATUS	VARCHAR	16
+CPS_PERFORMANCE_POLICY_LEVEL	VARCHAR	15
+HEALTHY_SCHOOL_CERTIFIED	VARCHAR	3
+SAFETY_ICON	VARCHAR	11
+SAFETY_SCORE	SMALLINT	2
+FAMILY_INVOLVEMENT_ICON	VARCHAR	11
+FAMILY_INVOLVEMENT_SCORE	VARCHAR	3
+ENVIRONMENT_ICON	VARCHAR	11
+ENVIRONMENT_SCORE	SMALLINT	2
+INSTRUCTION_ICON	VARCHAR	11
+INSTRUCTION_SCORE	SMALLINT	2
+LEADERS_ICON	VARCHAR	4
+LEADERS_SCORE	VARCHAR	3
+TEACHERS_ICON	VARCHAR	11
+TEACHERS_SCORE	VARCHAR	3
+PARENT_ENGAGEMENT_ICON	VARCHAR	7
+PARENT_ENGAGEMENT_SCORE	VARCHAR	3
+PARENT_ENVIRONMENT_ICON	VARCHAR	7
+PARENT_ENVIRONMENT_SCORE	VARCHAR	3
+AVERAGE_STUDENT_ATTENDANCE	VARCHAR	6
+RATE_OF_MISCONDUCTS__PER_100_STUDENTS_	DECIMAL	5
+AVERAGE_TEACHER_ATTENDANCE	VARCHAR	6
+INDIVIDUALIZED_EDUCATION_PROGRAM_COMPLIANCE_RATE	VARCHAR	7
+PK_2_LITERACY__	VARCHAR	4
+PK_2_MATH__	VARCHAR	4
+GR3_5_GRADE_LEVEL_MATH__	VARCHAR	4
+GR3_5_GRADE_LEVEL_READ__	VARCHAR	4
+GR3_5_KEEP_PACE_READ__	VARCHAR	4
+GR3_5_KEEP_PACE_MATH__	VARCHAR	4
+GR6_8_GRADE_LEVEL_MATH__	VARCHAR	4
+GR6_8_GRADE_LEVEL_READ__	VARCHAR	4
+GR6_8_KEEP_PACE_MATH_	VARCHAR	4
+GR6_8_KEEP_PACE_READ__	VARCHAR	4
+GR_8_EXPLORE_MATH__	VARCHAR	4
+GR_8_EXPLORE_READ__	VARCHAR	4
+ISAT_EXCEEDING_MATH__	DECIMAL	4
+ISAT_EXCEEDING_READING__	DECIMAL	4
+10th Grade PLAN (2010)	VARCHAR	4
+NET_CHANGE_EXPLORE_AND_PLAN	VARCHAR	3
+11th Grade Average ACT (2011)	VARCHAR	4
+NET_CHANGE_PLAN_AND_ACT	VARCHAR	3
+COLLEGE_ELIGIBILITY__	VARCHAR	4
+GRADUATION_RATE__	VARCHAR	4
+COLLEGE_ENROLLMENT_RATE__	VARCHAR	4
+COLLEGE_ENROLLMENT	SMALLINT	2
+GENERAL_SERVICES_ROUTE	SMALLINT	2
+FRESHMAN_ON_TRACK_RATE__	VARCHAR	4
+X_COORDINATE	DECIMAL	13
+ISAT_VALUE_ADD_MATH	DECIMAL	3
+ISAT_VALUE_ADD_READ	DECIMAL	3
+ISAT_VALUE_ADD_COLOR_MATH	VARCHAR	6
+ISAT_VALUE_ADD_COLOR_READ	VARCHAR	6
+STUDENTS_TAKING__ALGEBRA__	VARCHAR	4
+STUDENTS_PASSING__ALGEBRA__	VARCHAR	4
+9th Grade EXPLORE (2009)	VARCHAR	4
+9th Grade EXPLORE (2010)	VARCHAR	4
+10th Grade PLAN (2009)	VARCHAR	4
+Y_COORDINATE	DECIMAL	13
+LATITUDE	DECIMAL	18
+LONGITUDE	DECIMAL	18
+COMMUNITY_AREA_NUMBER	SMALLINT	2
+COMMUNITY_AREA_NAME	VARCHAR	22
+WARD	SMALLINT	2
+POLICE_DISTRICT	SMALLINT	2
+LOCATION	VARCHAR	27
+%sql select COLNAME, TYPENAME, LENGTH from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select COLNAME, TYPENAME, LENGTH from SYSCAT.COLUMNS where TABNAME = 'SCHOOLS'
+​
+or
+​
+%sql select distinct(NAME), COLTYPE, LENGTH from SYSIBM.SYSCOLUMNS where TBNAME = 'SCHOOLS'
+​
+-->
+​
+Questions
+Is the column name for the "SCHOOL ID" attribute in upper or mixed case?
+What is the name of "Community Area Name" column in your table? Does it have spaces?
+Are there any columns in whose names the spaces and paranthesis (round brackets) have been replaced by the underscore character "_"?
+Problems
+Problem 1
+How many Elementary Schools are in the dataset?
+%sql select count(*) from SCHOOLS where "Elementary, Middle, or High School" = 'ES'
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+1
+462
+Double-click **here** for a hint
+​
+<!--
+Which column specifies the school type e.g. 'ES', 'MS', 'HS'? ("Elementary School, Middle School, High School")
+-->
+​
+Double-click **here** for another hint
+​
+<!--
+Does the column name have mixed case, spaces or other special characters?
+If so, ensure you use double quotes around the "Name of the Column"
+-->
+​
+%sql select count(*) from SCHOOLS where "Elementary, Middle, or High School" = 'ES'
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select count(*) from SCHOOLS where "Elementary, Middle, or High School" = 'ES'
+​
+Correct answer: 462
+​
+-->
+​
+Problem 2
+What is the highest Safety Score?
+%sql select MAX(Safety_Score) AS MAX_SAFETY_SCORE from SCHOOLS
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+max_safety_score
+99
+Double-click **here** for a hint
+​
+<!--
+Use the MAX() function
+-->
+​
+%sql select MAX(Safety_Score) AS MAX_SAFETY_SCORE from SCHOOLS
+Double-click **here** for the solution.
+​
+<!-- Hint:
+​
+%sql select MAX(Safety_Score) AS MAX_SAFETY_SCORE from SCHOOLS
+​
+Correct answer: 99
+-->
+​
+Problem 3
+Which schools have highest Safety Score?
+%sql select Name_of_School, Safety_Score from SCHOOLS where Safety_Score = 99
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	safety_score
+Abraham Lincoln Elementary School	99
+Alexander Graham Bell Elementary School	99
+Annie Keller Elementary Gifted Magnet School	99
+Augustus H Burley Elementary School	99
+Edgar Allan Poe Elementary Classical School	99
+Edgebrook Elementary School	99
+Ellen Mitchell Elementary School	99
+James E McDade Elementary Classical School	99
+James G Blaine Elementary School	99
+LaSalle Elementary Language Academy	99
+Mary E Courtenay Elementary Language Arts Center	99
+Northside College Preparatory High School	99
+Northside Learning Center High School	99
+Norwood Park Elementary School	99
+Oriole Park Elementary School	99
+Sauganash Elementary School	99
+Stephen Decatur Classical Elementary School	99
+Talman Elementary School	99
+Wildwood Elementary School	99
+%sql select Name_of_School, Safety_Score from SCHOOLS where Safety_Score = 99
+Double-click **here** for the solution.
+​
+<!-- Solution:
+In the previous problem we found out that the highest Safety Score is 99, so we can use that as an input in the where clause:
+​
+%sql select Name_of_School, Safety_Score from SCHOOLS where Safety_Score = 99
+​
+or, a better way:
+​
+%sql select Name_of_School, Safety_Score from SCHOOLS where \
+  Safety_Score= (select MAX(Safety_Score) from SCHOOLS)
+​
+​
+Correct answer: several schools with with Safety Score of 99.
+-->
+​
+Problem 4
+What are the top 10 schools with the highest "Average Student Attendance"?
+%sql select Name_of_School, Average_Student_Attendance from SCHOOLS \
+    order by Average_Student_Attendance desc nulls last limit 10 
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	average_student_attendance
+John Charles Haines Elementary School	98.40%
+James Ward Elementary School	97.80%
+Edgar Allan Poe Elementary Classical School	97.60%
+Orozco Fine Arts & Sciences Elementary School	97.60%
+Rachel Carson Elementary School	97.60%
+Annie Keller Elementary Gifted Magnet School	97.50%
+Andrew Jackson Elementary Language Academy	97.40%
+Lenart Elementary Regional Gifted Center	97.40%
+Disney II Magnet School	97.30%
+John H Vanderpoel Elementary Magnet School	97.20%
+%sql select Name_of_School, Average_Student_Attendance from SCHOOLS \
+    order by Average_Student_Attendance desc nulls last limit 10 
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select Name_of_School, Average_Student_Attendance from SCHOOLS \
+    order by Average_Student_Attendance desc nulls last limit 10 
+​
+-->
+​
+Problem 5
+Retrieve the list of 5 Schools with the lowest Average Student Attendance sorted in ascending order based on attendance
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	average_student_attendance
+Richard T Crane Technical Preparatory High School	57.90%
+Barbara Vick Early Childhood & Family Center	60.90%
+Dyett High School	62.50%
+Wendell Phillips Academy High School	63.00%
+Orr Academy High School	66.30%
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+​
+-->
+​
+Problem 6
+Now remove the '%' sign from the above result set for Average Student Attendance column
+%sql SELECT Name_of_School, REPLACE(Average_Student_Attendance, '%', '') \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	2
+Richard T Crane Technical Preparatory High School	57.90
+Barbara Vick Early Childhood & Family Center	60.90
+Dyett High School	62.50
+Wendell Phillips Academy High School	63.00
+Orr Academy High School	66.30
+Double-click here for a hint
+
+%sql SELECT Name_of_School, REPLACE(Average_Student_Attendance, '%', '') \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+Double-click **here** for the solution.
+​
+<!-- Hint:
+​
+%sql SELECT Name_of_School, REPLACE(Average_Student_Attendance, '%', '') \
+     from SCHOOLS \
+     order by Average_Student_Attendance \
+     fetch first 5 rows only
+​
+-->
+​
+Problem 7
+Which Schools have Average Student Attendance lower than 70%?
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     where CAST ( REPLACE(Average_Student_Attendance, '%', '') AS DOUBLE ) < 70 \
+     order by Average_Student_Attendance
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	average_student_attendance
+Richard T Crane Technical Preparatory High School	57.90%
+Barbara Vick Early Childhood & Family Center	60.90%
+Dyett High School	62.50%
+Wendell Phillips Academy High School	63.00%
+Orr Academy High School	66.30%
+Manley Career Academy High School	66.80%
+Chicago Vocational Career Academy High School	68.80%
+Roberto Clemente Community Academy High School	69.60%
+Double-click here for a hint
+
+Double-click here for another hint
+
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     where CAST ( REPLACE(Average_Student_Attendance, '%', '') AS DOUBLE ) < 70 \
+     order by Average_Student_Attendance
+     
+or,
+​
+%sql SELECT Name_of_School, Average_Student_Attendance  \
+     from SCHOOLS \
+     where DECIMAL ( REPLACE(Average_Student_Attendance, '%', '') ) < 70 \
+     order by Average_Student_Attendance
+​
+-->
+​
+Problem 8
+Get the total College Enrollment for each Community Area
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+community_area_name	total_enrollment
+ALBANY PARK	6864
+ARCHER HEIGHTS	4823
+ARMOUR SQUARE	1458
+ASHBURN	6483
+AUBURN GRESHAM	4175
+AUSTIN	10933
+AVALON PARK	1522
+AVONDALE	3640
+BELMONT CRAGIN	14386
+BEVERLY	1636
+BRIDGEPORT	3167
+BRIGHTON PARK	9647
+BURNSIDE	549
+CALUMET HEIGHTS	1568
+CHATHAM	5042
+CHICAGO LAWN	7086
+CLEARING	2085
+DOUGLAS	4670
+DUNNING	4568
+EAST GARFIELD PARK	5337
+EAST SIDE	5305
+EDGEWATER	4600
+EDISON PARK	910
+ENGLEWOOD	6832
+FOREST GLEN	1431
+FULLER PARK	531
+GAGE PARK	9915
+GARFIELD RIDGE	4552
+GRAND BOULEVARD	2809
+GREATER GRAND CROSSING	4051
+HEGEWISCH	963
+HERMOSA	3975
+HUMBOLDT PARK	8620
+HYDE PARK	1930
+IRVING PARK	7764
+JEFFERSON PARK	1755
+KENWOOD	4287
+LAKE VIEW	7055
+LINCOLN PARK	5615
+LINCOLN SQUARE	4132
+LOGAN SQUARE	7351
+LOOP	871
+LOWER WEST SIDE	7257
+MCKINLEY PARK	1552
+MONTCLARE	1317
+MORGAN PARK	3271
+MOUNT GREENWOOD	2091
+NEAR NORTH SIDE	3362
+NEAR SOUTH SIDE	1378
+NEAR WEST SIDE	7975
+NEW CITY	7922
+NORTH CENTER	7541
+NORTH LAWNDALE	5146
+NORTH PARK	4210
+NORWOOD PARK	6469
+OAKLAND	140
+OHARE	786
+PORTAGE PARK	6954
+PULLMAN	1620
+RIVERDALE	1547
+ROGERS PARK	4068
+ROSELAND	7020
+SOUTH CHICAGO	4043
+SOUTH DEERING	1859
+SOUTH LAWNDALE	14793
+SOUTH SHORE	4543
+UPTOWN	4388
+WASHINGTON HEIGHTS	4006
+WASHINGTON PARK	2648
+WEST ELSDON	3700
+WEST ENGLEWOOD	5946
+WEST GARFIELD PARK	2622
+WEST LAWN	4207
+WEST PULLMAN	3240
+WEST RIDGE	8197
+WEST TOWN	9429
+WOODLAWN	4206
+Double-click here for a hint
+
+Double-click here for another hint
+
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name 
+​
+-->
+​
+Problem 9
+Get the 5 Community Areas with the least total College Enrollment sorted in ascending order
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name \
+   order by TOTAL_ENROLLMENT asc \
+   fetch first 5 rows only
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+community_area_name	total_enrollment
+OAKLAND	140
+FULLER PARK	531
+BURNSIDE	549
+OHARE	786
+LOOP	871
+Double-click here for a hint
+
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name \
+   order by TOTAL_ENROLLMENT asc \
+   fetch first 5 rows only
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql select Community_Area_Name, sum(College_Enrollment) AS TOTAL_ENROLLMENT \
+   from SCHOOLS \
+   group by Community_Area_Name \
+   order by TOTAL_ENROLLMENT asc \
+   fetch first 5 rows only
+​
+-->
+​
+Problem 10
+List 5 schools with lowest safety score.
+%sql SELECT name_of_school, safety_score \
+FROM schools \
+ORDER BY safety_score \
+LIMIT 5
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+name_of_school	safety_score
+Edmond Burke Elementary School	1
+Luke O'Toole Elementary School	5
+George W Tilton Elementary School	6
+Foster Park Elementary School	11
+Emil G Hirsch Metropolitan High School	13
+%sql SELECT name_of_school, safety_score \
+FROM schools \
+ORDER BY safety_score \
+LIMIT 5
+Double-click **here** for the solution.
+​
+<!-- Solution:
+​
+%sql SELECT name_of_school, safety_score \
+FROM schools \
+ORDER BY safety_score \
+LIMIT 5
+-->
+​
+Problem 11
+Get the hardship index for the community area which has College Enrollment of 4368
+%%sql 
+select hardship_index 
+   from chicago_socioeconomic_data CD, schools CPS 
+   where CD.ca = CPS.community_area_number 
+      and college_enrollment = 4368
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+hardship_index
+6.0
+Double-click **here** for the solution.
+​
+<!-- Solution:
+NOTE: For this solution to work the CHICAGO_SOCIOECONOMIC_DATA table 
+      as created in the last lab of Week 3 should already exist
+​
+%%sql 
+select hardship_index 
+   from chicago_socioeconomic_data CD, schools CPS 
+   where CD.ca = CPS.community_area_number 
+      and college_enrollment = 4368
+​
+-->
+​
+Problem 12
+Get the hardship index for the community area which has the school with the highest enrollment.
+%sql select ca, community_area_name, hardship_index from chicago_socioeconomic_data \
+   where ca in \
+   ( select community_area_number from schools order by college_enrollment desc limit 1 )
+ * ibm_db_sa://vwv79926:***@ea286ace-86c7-4d5b-8580-3fbfa46b1c66.bs2io90l08kqb1od8lcg.databases.appdomain.cloud:31505/bludb
+Done.
+ca	community_area_name	hardship_index
+5.0	North Center	6.0
+%sql select ca, community_area_name, hardship_index from chicago_socioeconomic_data \
+   where ca in \
+   ( select community_area_number from schools order by college_enrollment desc limit 1 )
+Double-click **here** for the solution.
+​
+<!-- Solution:
+NOTE: For this solution to work the CHICAGO_SOCIOECONOMIC_DATA table 
+      as created in the last lab of Week 3 should already exist
+​
+%sql select ca, community_area_name, hardship_index from chicago_socioeconomic_data \
+   where ca in \
+   ( select community_area_number from schools order by college_enrollment desc limit 1 )
+​
+-->
+​
+Summary
+In this lab you learned how to work with a real word dataset using SQL and Python. You learned how to query columns with spaces or special characters in their names and with mixed case names. You also used built in database functions and practiced how to sort, limit, and order result sets, as well as used sub-queries and worked with multiple tables.
+Author
+Rav Ahuja
+
+Change Log
+Date (YYYY-MM-DD)	Version	Changed By	Change Description
+2021-07-09	2.4	Malika	Updated connection string
+2021-05-19	2.3	Lakshmi Holla	Updated question
+2021-04-20	2.2	Malika	Added the libraries
+2020-11-27	2.1	Sannareddy Ramesh	Modified data sets and added new problems
+2020-08-28	2.0	Lavanya	Moved lab to course repo in GitLab
